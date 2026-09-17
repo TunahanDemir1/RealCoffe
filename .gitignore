@@ -1,6 +1,7 @@
-venv/
+﻿venv/
 __pycache__/
 *.pyc
 .env
 data/coffee_tracker.db
-.DS_Store
+Data/coffee_tracker.db
+debug.html
