@@ -2,6 +2,4 @@
 __pycache__/
 *.pyc
 .env
-data/coffee_tracker.db
-Data/coffee_tracker.db
 debug.html

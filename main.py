@@ -2,20 +2,21 @@ import sys
 import os
 from dotenv import load_dotenv
 
-# .env varsa yerel ortamda yükle
 load_dotenv()
 
-# src klasörünü modül yolu olarak tanıt
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
+from database import init_db, save_scraped_data
 from scraper import KahhveComScraper
-from database import save_scraped_data
 from model import train_and_detect_deals
 from notifier import send_telegram_alert
 
 def run_pipeline():
     print("=" * 60)
-    print("1. [SCRAPING] Canlı kahve fiyatları toplanıyor...")
+    print("0. [DATABASE] Veritabanı tabloları hazırlanıyor...")
+    init_db()
+
+    print("\n1. [SCRAPING] Canlı kahve fiyatları toplanıyor...")
     scraper = KahhveComScraper()
     products = scraper.scrape(max_pages=3)
     
@@ -29,7 +30,6 @@ def run_pipeline():
     deals_df = train_and_detect_deals()
 
     print("\n3. [SONUÇLAR VE BİLDİRİM] Fırsatlar filtreleniyor...")
-    # Deal score 40 üstü veya sahte indirim olanları ayıkla
     alerts = deals_df[
         (deals_df["deal_score"] >= 40) | 
         (deals_df["recommendation"] == "Sahte İndirim Şüphesi")
@@ -49,7 +49,6 @@ def run_pipeline():
         send_telegram_alert(full_msg)
     else:
         print("Bugün eşiği aşan bir fırsat bulunamadı.")
-        # Opsiyonel: Her şeyin çalıştığını teyit etmek için hafif bir nabız mesajı
         send_telegram_alert("☕ *Kahve Takipçisi*: Bugün kayda değer bir indirim dalgalanması tespit edilmedi.")
 
     print("=" * 60)
