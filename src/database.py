@@ -31,6 +31,12 @@ def init_db():
         FOREIGN KEY (product_id) REFERENCES products(id)
     )
     """)
+
+    # Hızlı sorgulama için indeksler
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_price_history_pid_time 
+    ON price_history(product_id, scraped_at DESC)
+    """)
     
     conn.commit()  #Diske kalıcı olarak yazar.
     conn.close()   #Açık olan veri tabanı bağlantısını güvenlice kapatır.
@@ -49,17 +55,22 @@ def save_scraped_data(products_list: list[dict]):
     
     for item in products_list:
         # 1. Ürün tabloda var mı kontrol et (URL tekildir)
-        cursor.execute("SELECT id FROM products WHERE url = ?", (item["url"],))
+        cursor.execute("SELECT id, weight_g FROM products WHERE url = ?", (item["url"],))
         product = cursor.fetchone()
         
         if product:
             product_id = product[0]
+            existing_weight = product[1]
+            new_weight = item.get("weight_g")
+            # Gramaj güncellenmişse veya önceden default kaldıysa güncelle
+            if new_weight and new_weight != existing_weight:
+                cursor.execute("UPDATE products SET weight_g = ?, title = ? WHERE id = ?", (new_weight, item["title"], product_id))
         else:
             # Yeni ürünse ekle
             cursor.execute("""
                 INSERT INTO products (platform, title, roaster, weight_g, url)
                 VALUES (?, ?, ?, ?, ?)
-            """, (item["platform"], item["title"], item.get("roaster"), item.get("weight_g"), item["url"]))
+            """, (item["platform"], item["title"], item.get("roaster"), item.get("weight_g", 250), item["url"]))
             product_id = cursor.lastrowid
         
         # 2. Fiyat geçmişine yeni kaydı ekle
@@ -70,4 +81,4 @@ def save_scraped_data(products_list: list[dict]):
         
     conn.commit()
     conn.close()
-    print(f"{len(products_list)} adet ürünün fiyat verisi kaydedildi.")
+    print(f"{len(products_list)} adet ürünün fiyat verisi kaydedildi.")

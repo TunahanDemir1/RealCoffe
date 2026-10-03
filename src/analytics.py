@@ -1,6 +1,13 @@
+import sys
 import sqlite3
 import pandas as pd
 import os
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 DB_PATH = os.path.join("Data", "coffee_tracker.db")
 
@@ -14,6 +21,7 @@ def load_data_from_db() -> pd.DataFrame:
         p.title,
         p.roaster,
         p.weight_g,
+        p.url,
         ph.price,
         ph.in_stock,
         ph.scraped_at
@@ -25,30 +33,36 @@ def load_data_from_db() -> pd.DataFrame:
     df = pd.read_sql_query(query, conn)
     conn.close()
     
-    df["scraped_at"] = pd.to_datetime(df["scraped_at"])
+    if not df.empty:
+        df["scraped_at"] = pd.to_datetime(df["scraped_at"])
+        df["weight_g"] = df["weight_g"].fillna(250).apply(lambda w: w if w > 0 else 250)
     return df
 
 def generate_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Veri bilimi ve fiyat takip modelleri için temel öznitelikleri üretir.
     """
+    if df.empty:
+        return df
+
     # 1. 100g başına birim fiyat (Farklı gramajları adil karşılaştırmak için)
     df["price_per_100g"] = (df["price"] / df["weight_g"]) * 100
     
-    # 2. Ürün bazında zaman serisi metrikleri (İleride çoklu scrape yapıldıkça dolacak)
+    # 2. Ürün bazında zaman serisi metrikleri
     df = df.sort_values(by=["product_id", "scraped_at"])
     
     # Önceki fiyata göre değişim miktarı ve yüzdesi
-    df["price_diff"] = df.groupby("product_id")["price"].diff()
-    df["price_pct_change"] = df.groupby("product_id")["price"].pct_change() * 100
+    df["price_diff"] = df.groupby("product_id")["price"].diff().fillna(0)
+    df["price_pct_change"] = (df.groupby("product_id")["price"].pct_change() * 100).fillna(0)
     
     # 7 günlük / 30 günlük hareketli ortalama (Rolling Mean)
     df["rolling_avg_price"] = df.groupby("product_id")["price"].transform(
-        lambda x: x.rolling(window=3, min_periods=1).mean()
+        lambda x: x.rolling(window=7, min_periods=1).mean()
     )
     
     # Gerçek İndirim Skoru: Anlık fiyat, hareketli ortalamanın ne kadar altında?
     df["discount_depth"] = (df["rolling_avg_price"] - df["price"]) / df["rolling_avg_price"]
+    df["discount_depth"] = df["discount_depth"].apply(lambda x: max(0.0, float(x)))
     
     return df
 
@@ -78,4 +92,4 @@ def display_summary():
     print("=" * 60)
 
 if __name__ == "__main__":
-    display_summary()
+    display_summary()

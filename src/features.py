@@ -1,7 +1,14 @@
+import sys
 import sqlite3
 import pandas as pd
 import numpy as np
 import os
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 DB_PATH = os.path.join("Data", "coffee_tracker.db")
 
@@ -10,9 +17,11 @@ def build_feature_dataset() -> pd.DataFrame:
     query = """
     SELECT 
         p.id AS product_id,
+        p.platform,
         p.title,
         p.roaster,
         p.weight_g,
+        p.url,
         ph.price,
         ph.in_stock,
         ph.scraped_at
@@ -23,13 +32,20 @@ def build_feature_dataset() -> pd.DataFrame:
     df = pd.read_sql_query(query, conn)
     conn.close()
 
+    if df.empty:
+        return df
+
     df["scraped_at"] = pd.to_datetime(df["scraped_at"])
+    df["weight_g"] = df["weight_g"].fillna(250).apply(lambda w: w if w > 0 else 250)
 
     # 1. 100g Başına Standart Fiyat
     df["price_per_100g"] = (df["price"] / df["weight_g"]) * 100
 
     # 2. Zaman Serisi Öznitelikleri (Grup: Ürün Bazında)
     grouped = df.groupby("product_id")["price"]
+
+    # Ürünün veritabanında kaç adet geçmiş fiyat kaydı var? (Cold start tespiti için)
+    df["history_count"] = grouped.transform("count")
 
     # 7 ve 14 Günlük Hareketli Ortalama (Rolling Mean)
     df["rolling_mean_7d"] = grouped.transform(lambda x: x.rolling(7, min_periods=1).mean())
@@ -51,13 +67,18 @@ def build_feature_dataset() -> pd.DataFrame:
     )
 
     # Gerçek İndirim Derinliği (0 ile 1 arası oran)
-    df["discount_ratio"] = (df["rolling_mean_14d"] - df["price"]) / df["rolling_mean_14d"]
-    df["discount_ratio"] = df["discount_ratio"].apply(lambda x: max(0.0, x))
+    df["discount_ratio"] = np.where(
+        df["rolling_mean_14d"] > 0,
+        (df["rolling_mean_14d"] - df["price"]) / df["rolling_mean_14d"],
+        0.0
+    )
+    df["discount_ratio"] = df["discount_ratio"].apply(lambda x: max(0.0, float(x)))
 
     # 4. Sahte İndirim Tespiti Kuralı (Fake Discount Indicator)
-    # Fiyat son 3 günde önce %10'dan fazla artıp hemen ardından düşmüş mü?
+    # Fiyat son 7 günde önce %8'den fazla artıp hemen ardından düşmüş mü?
     df["max_price_last_7d"] = grouped.transform(lambda x: x.rolling(7, min_periods=1).max())
     df["is_fake_discount"] = (
+        (df["history_count"] >= 3) & # Yeterli geçmiş veri olmalı
         (df["max_price_last_7d"] > df["rolling_mean_14d"] * 1.08) & 
         (df["price"] < df["max_price_last_7d"]) &
         (df["price"] >= df["rolling_mean_14d"] * 0.95)
@@ -72,4 +93,4 @@ if __name__ == "__main__":
     
     print("\nÜretilen Örnek Feature Matrisi (Son 5 Kayıt):")
     cols_to_show = ["title", "price", "rolling_mean_7d", "z_score", "discount_ratio", "is_fake_discount"]
-    print(feature_df[cols_to_show].tail())
+    print(feature_df[cols_to_show].tail())
