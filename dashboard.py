@@ -582,6 +582,17 @@ render_html("""
     .mote-2 { left: 38%; width: 6px; height: 6px; animation: moteRise 22s ease-in-out infinite -10s; }
     .mote-3 { left: 58%; width: 4px; height: 4px; animation: moteRise 16s ease-in-out infinite -6s; }
     .mote-4 { left: 82%; width: 5px; height: 5px; animation: moteRise 20s ease-in-out infinite -14s; }
+
+    /* Yasal Sorumluluk Reddi Kutusu */
+    .legal-disclaimer-box {
+        background: rgba(22, 14, 10, 0.75);
+        border: 1px solid rgba(226, 178, 131, 0.18);
+        border-radius: 14px;
+        padding: 16px 22px;
+        margin-top: 3rem;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(10px);
+    }
 </style>
 """)
 
@@ -810,6 +821,15 @@ with st.sidebar:
                 • <b>0 - 39 Puan:</b> Standart Piyasa Fiyatı
             </p>
         </div>
+        """)
+
+    with st.expander("⚖️ Yasal Uyarı & Şeffaflık", expanded=False):
+        st.markdown("""
+        **Bağımsız Fiyat Takipçisi:** BeanRadar™, e-ticaret platformlarının kamuya açık fiyat verilerini tüketici faydası ve şeffaflık için derler.
+        
+        • Sitemiz doğrudan ürün satışı yapmaz; yetkili resmi satış sayfalarına yönlendirir.
+        • Yönlendirmeler satış ortaklığı (affiliate) kapsamında olabilir ve kullanıcıya ek maliyet oluşturmaz.
+        • Hak sahipleri veya içerik talepleri için GitHub repository üzerinden iletişime geçilebilir.
         """)
 
     render_html("""
@@ -1194,3 +1214,23 @@ elif current_page == "📲 Telegram Radarı":
             m_col2.metric("Fiyat Geçmişi", f"{h_count} Satır")
         except Exception:
             pass
+
+# ==========================================
+# ⚖️ YASAL BİLGİLENDİRME & ŞEFFAFLIK BEYANI (LEGAL DISCLAIMER)
+# ==========================================
+render_html("""
+<div class="legal-disclaimer-box">
+    <div style="display:flex; align-items:flex-start; gap:12px;">
+        <span style="font-size:1.35rem; line-height:1;">⚖️</span>
+        <div style="font-size:0.77rem; color:#a08c7d; line-height:1.65;">
+            <b style="color:#d4a373;">Yasal Bilgilendirme, Tüketici Şeffaflığı & Satış Ortaklığı Beyanı:</b><br>
+            <b>BeanRadar™</b>, nitelikli kahve tüketicilerini bilgilendirmek ve piyasa fiyatlarını şeffaflaştırmak amacıyla geliştirilmiş bağımsız bir fiyat takip ve veri indeksleme platformudur.<br>
+            • Sitemiz doğrudan ürün satışı yapmamaktadır. Tüm fiyat, gramaj, stok ve ürün verileri e-ticaret sitelerinden (kahhve.com ve resmi kavurucular) kamuya açık ticari bilgiler taranarak indekslenmiştir.<br>
+            • <i>'Resmi Satış Sayfasında İncele'</i> butonları kullanıcıyı doğrudan ilgili ürünün yetkili resmi satış sayfasına yönlendirir. Mesafeli satış sözleşmesi, fatura, ödeme ve teslimat süreçleri kullanıcı ile yönlendirilen resmi e-ticaret platformları arasında gerçekleşir.<br>
+            • Sitemizdeki yönlendirme bağlantıları satış ortaklığı (affiliate / gelir ortaklığı) kapsamında olabilir. Bu yönlendirmeler son kullanıcıya herhangi bir ek maliyet veya fiyat farkı yansıtmaz.<br>
+            • Marka isimleri, ticari unvanlar ve logolar ilgili hak sahiplerine aittir.
+        </div>
+    </div>
+</div>
+""")
+

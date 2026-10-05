@@ -1,5 +1,6 @@
 import json
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 from database import save_scraped_data
@@ -68,6 +69,8 @@ class KahhveComScraper:
         products_list = []
 
         for page in range(1, max_pages + 1):
+            if page > 1:
+                time.sleep(1.5)  # Sunucuya aşırı yük bindirmemek için etik bekleme süresi
             url = f"{self.target_url}?pg={page}"
             print(f"Sayfa {page} taranıyor: {url}")
             
